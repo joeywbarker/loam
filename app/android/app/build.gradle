@@ -9,8 +9,8 @@ android {
         applicationId 'app.loam'
         minSdk 24
         targetSdk 34
-        versionCode (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
-        versionName System.getenv('LOAM_VERSION') ?: '0.1.0'
+        versionCode = Integer.parseInt(System.getenv('GITHUB_RUN_NUMBER') ?: '1')
+        versionName = System.getenv('LOAM_VERSION') ?: '0.1.0'
     }
     signingConfigs {
         if (keystore) {
