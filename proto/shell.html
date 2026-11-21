@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#07060c">
+<title>Loam — pre-alpha</title>
+<style>
+:root{--bg:#07060c;--panel:#100e1a;--line:#262238;--fg:#ece8f6;--dim:#8f89a6;--me:#7f7;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:15px/1.35 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden;overscroll-behavior:none}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+#birth{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:28px;text-align:center}
+#birth h1{margin:0;font-weight:300;letter-spacing:.5em;font-size:22px;color:var(--dim)}
+#birth .big{font-size:30px;font-weight:700;letter-spacing:.02em}
+#birth p{margin:0;color:var(--dim);max-width:320px}
+#bsig{width:120px;height:120px;image-rendering:pixelated;border-radius:16px}
+.cert{border:1px dashed var(--line);border-radius:12px;padding:12px 16px;color:var(--dim);font-size:13px}
+.cert b{color:var(--fg);letter-spacing:.12em}
+button{font:inherit;color:var(--fg);background:#1a1730;border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-height:42px}
+button:active{filter:brightness(1.4)}
+button.on{outline:2px solid var(--me);outline-offset:-2px}
+button.go{background:var(--me);color:#06110a;font-weight:700;border:0;padding:12px 22px}
+#main{position:absolute;inset:0;display:none;flex-direction:column;padding-top:env(safe-area-inset-top)}
+#top{display:flex;align-items:center;gap:10px;padding:8px 12px 4px}
+#msig{width:34px;height:34px;image-rendering:pixelated;border-radius:8px;flex:none}
+#nm{font-weight:700;font-size:16px}
+#sub{font-size:12px;color:var(--dim)}
+#meterw{padding:2px 12px 6px}
+#meter{height:8px;background:#17142a;border-radius:4px;overflow:hidden}
+#fill{height:100%;width:0;background:var(--me);transition:width .3s}
+#mlab{font-size:11px;color:var(--dim);margin-top:3px;display:flex;justify-content:space-between}
+#stage{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;touch-action:none;position:relative}
+canvas#c{image-rendering:pixelated;border-radius:6px;box-shadow:0 0 0 1px var(--line)}
+#tools{display:flex;gap:6px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));overflow-x:auto;border-top:1px solid var(--line);background:var(--panel)}
+#tools button{flex:none}
+#toast{position:absolute;left:50%;top:12px;transform:translateX(-50%);background:#000c;border:1px solid var(--line);padding:8px 12px;border-radius:10px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+#ranks{position:absolute;inset:0;background:#07060cee;display:none;flex-direction:column;padding:24px 18px;gap:10px}
+#ranks h2{margin:0 0 4px;font-weight:600}
+.row{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:10px}
+.row canvas{width:28px;height:28px;image-rendering:pixelated;border-radius:6px}
+.row .n{flex:1}.row .r{font-variant-numeric:tabular-nums;color:var(--dim)}
+.row.me{border-color:var(--me)}
+.note{font-size:12px;color:var(--dim)}
+</style>
+</head>
+<body>
+<div id="birth">
+  <h1>L O A M</h1>
+  <p>A colony is born only once. Its name, its colour and its mark come from this moment, and they will never change.</p>
+  <canvas id="bsig" width="5" height="5"></canvas>
+  <div class="big" id="bname">…</div>
+  <div class="cert mono">born <span id="bdate"></span><br>birth code <b id="bcode"></b></div>
+  <button class="go" id="bgo">This one is mine</button>
+</div>
+
+<div id="main">
+  <div id="top">
+    <canvas id="msig" width="5" height="5"></canvas>
+    <div style="flex:1;min-width:0"><div id="nm"></div><div id="sub"></div></div>
+  </div>
+  <div id="meterw"><div id="meter"><div id="fill"></div></div><div id="mlab"><span id="ml1"></span><span id="ml2"></span></div></div>
+  <div id="stage"><canvas id="c"></canvas><div id="toast"></div></div>
+  <div id="tools">
+    <button data-t="tend" class="on">✋ Tend</button>
+    <button data-t="wall">▦ Wall</button>
+    <button data-t="arrow">➜ Path</button>
+    <button data-t="bud">✱ Bud</button>
+    <button data-t="erase">⌫ Clear</button>
+    <button id="bRank">🏆 Lineages</button>
+    <button id="bDay">☀ Next day <span class="note">(demo)</span></button>
+  </div>
+  <div id="ranks">
+    <h2>Lineages</h2>
+    <div class="note">Reach = ground held + living wisps. No names are chosen and no one can talk here.</div>
+    <div id="rlist"></div>
+    <div style="flex:1"></div>
+    <div class="note">Demo only — in the real thing there is no rebirth.</div>
+    <div style="display:flex;gap:8px"><button id="rClose" style="flex:1">Back</button><button id="rReset">Erase &amp; be reborn</button></div>
+  </div>
+</div>
+
+<script>
+/*CORE*/
+</script>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const KEY = "loam.proto.v1", TPS = 12, CAP = 180, ACTIVE_MS = 5000;   // demo cap 3 min (real: ~20 min)
+const RIVALS = [
+  { lin:1, hue:188, days:7, nx:15, ny:24, seed:0x9e3779b1 },
+  { lin:2, hue:305, days:4, nx:33, ny:30, seed:0x7f4a7c15 },
+  { lin:3, hue:38,  days:2, nx:22, ny:42, seed:0x2545f491 },
+];
+const ME = 4;
+const mult = days => 1 + 0.3 * days;
+
+// ---------- identity: born once from this moment ----------
+function rngFrom(seed){ let x = seed>>>0 || 1; return () => { x ^= x<<13; x>>>=0; x ^= x>>>17; x ^= x<<5; x>>>=0; return x; }; }
+function nameFrom(seed){
+  const syl = ["ka","lo","mi","ru","te","va","shi","no","ze","pa","dor","fen","ith","om","ul","sa","ren","tu","bai","wen"];
+  const r = rngFrom(seed ^ 0xabcdef), n = 2 + (r() % 2);
+  let s = ""; for (let i = 0; i < n; i++) s += syl[r() % syl.length];
+  return s[0].toUpperCase() + s.slice(1);
+}
+function hueFrom(seed){ const gaps = [[80,150],[212,256],[352,374]]; const g = gaps[seed % 3]; return (g[0] + (seed >>> 3) % (g[1]-g[0])) % 360; }
+function codeFrom(a,b){ const A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let n = BigInt(a>>>0)<<32n | BigInt(b>>>0), s=""; for(let i=0;i<12;i++){ s += A[Number(n % 32n)]; n /= 32n; } return s.slice(0,4)+"-"+s.slice(4,8)+"-"+s.slice(8); }
+function drawSigil(cv, seed, hue){
+  const x = cv.getContext("2d"), r = rngFrom(seed ^ 0x51617);
+  x.fillStyle = `hsl(${hue},35%,12%)`; x.fillRect(0,0,5,5);
+  x.fillStyle = `hsl(${hue},85%,62%)`;
+  for (let j = 0; j < 5; j++) for (let i = 0; i < 3; i++) if (r() & 1) { x.fillRect(i,j,1,1); x.fillRect(4-i,j,1,1); }
+}
+const today = () => new Date().toLocaleDateString("en-CA");
+
+// ---------- state ----------
+let P = null;          // persistent: identity + progress + world
+function load(){ try { return JSON.parse(localStorage.getItem(KEY)); } catch(e){ return null; } }
+function persist(){ if (!P) return; P.world = Core.save(); P.savedAt = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(P)); } catch(e){} }
+
+function birth(){
+  const a = new Uint32Array(2); crypto.getRandomValues(a); a[0] ^= Date.now() >>> 0;
+  const seed = a[0];
+  P = { id: { seed, seed2: a[1], born: Date.now(), name: nameFrom(seed), hue: hueFrom(a[1]), code: codeFrom(a[0], a[1]) },
+        prog: { streak: 0, day: today(), todaySec: 0, days: 1 } };
+  const r = rngFrom(a[1]);
+  Core.newWorld(seed, [...RIVALS.map(v => ({ lin:v.lin, nx:v.nx, ny:v.ny })), { lin:ME, nx: 6 + r() % 36, ny: 64 + r() % 4 }]);   // born at the edge
+  for (let t = 0; t < 600; t++) { const a = rivalAttention(t); a[ME] = 1; Core.tick(a); }                            // the world was already alive; yours is newly hatched
+  $("bsig").width = 5; drawSigil($("bsig"), P.id.seed2, P.id.hue);
+  $("bname").textContent = P.id.name; $("bname").style.color = `hsl(${P.id.hue},85%,65%)`;
+  $("bdate").textContent = new Date(P.id.born).toLocaleString(); $("bcode").textContent = P.id.code;
+  $("birth").style.display = "flex";
+  $("bgo").onclick = () => { persist(); $("birth").style.display = "none"; start(); };
+}
+
+// rivals keep their own rhythm: always awake, fed in bursts like real keepers (you are absent from this map = asleep)
+function rivalAttention(t){ const a = {}; for (const v of RIVALS) a[v.lin] = ((t + v.lin * 300) % 900) < 380 ? mult(v.days) : 0; return a; }
+
+function rollDay(forced){
+  const p = P.prog, d = today();
+  if (!forced && p.day === d) return;
+  const missed = forced ? 0 : Math.max(0, Math.round((new Date(d) - new Date(p.day)) / 864e5) - 1);
+  const tended = p.todaySec >= 30;
+  p.streak = tended ? p.streak + 1 : Math.floor(p.streak / 2);
+  for (let i = 0; i < missed; i++) p.streak = Math.floor(p.streak / 2);
+  p.days++; p.todaySec = 0; p.day = d;
+  toast(tended ? `A new day. Streak ${p.streak} — your care now counts ×${mult(p.streak).toFixed(1)}` : `Too little care yesterday. Streak fell to ${p.streak}.`);
+}
+
+// ---------- main ----------
+let tool = "tend", lastTouch = 0, arrowDir = 0, tendBudget = 0;
+function start(){
+  $("main").style.display = "flex";
+  $("msig").width = 5; drawSigil($("msig"), P.id.seed2, P.id.hue);
+  $("nm").textContent = P.id.name; $("nm").style.color = `hsl(${P.id.hue},85%,65%)`;
+  document.documentElement.style.setProperty("--me", `hsl(${P.id.hue},80%,60%)`);
+  rollDay(false);
+  resize(); loop();
+  setInterval(persist, 4000);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) persist(); });
+}
+function attending(){ return !document.hidden && Date.now() - lastTouch < ACTIVE_MS && P.prog.todaySec < CAP; }
+let acc = 0, lastT = performance.now();
+function loop(){
+  if (!P) return;
+  const now = performance.now(); acc += (now - lastT) / 1000; lastT = now;
+  let n = 0;
+  while (acc >= 1 / TPS && n < 4) {
+    acc -= 1 / TPS; n++;
+    const att = rivalAttention(Core.state().tick), on = attending();
+    att[ME] = document.hidden ? undefined : on ? mult(P.prog.streak) : 0;
+    if (on) { P.prog.todaySec += 1 / TPS; tendBudget = Math.min(6, tendBudget + 0.35 * att[ME]); }
+    Core.tick(att);
+  }
+  if (acc > 1) acc = 0;
+  draw(); hud();
+  requestAnimationFrame(loop);
+}
+
+// ---------- drawing ----------
+const cv = $("c"), ctx = cv.getContext("2d"); let cs = 8;
+const HUE = { 1:188, 2:305, 3:38 };
+function hueOf(l){ return l === ME ? P.id.hue : HUE[l]; }
+function resize(){
+  const st = $("stage"), aw = st.clientWidth - 12, ah = st.clientHeight - 12;
+  cs = Math.max(4, Math.floor(Math.min(aw / Core.W, ah / Core.H)));
+  const d = window.devicePixelRatio || 1;
+  cv.style.width = cs * Core.W + "px"; cv.style.height = cs * Core.H + "px";
+  cv.width = cs * Core.W * d; cv.height = cs * Core.H * d; ctx.setTransform(d,0,0,d,0,0);
+}
+window.addEventListener("resize", () => { if (P) resize(); });
+const GL = { 62:"→", 118:"↓", 60:"←", 94:"↑", 115:"✱", 35:"" };
+function draw(){
+  const S = Core.state(), W = Core.W, H = Core.H;
+  ctx.fillStyle = "#07060c"; ctx.fillRect(0, 0, W * cs, H * cs);
+  ctx.font = `${Math.floor(cs * 0.9)}px system-ui`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = y * W + x, o = S.occ[i], c = o ? S.ws[o - 1].under : S.cells[i];
+    const g = Core.G(c), ow = Core.O(c), h = Core.HT(c), px = x * cs, py = y * cs;
+    if (ow) { ctx.fillStyle = `hsl(${hueOf(ow)},45%,${7 + h * 2.2}%)`; ctx.fillRect(px, py, cs, cs); }
+    else if (h) { ctx.fillStyle = `hsl(30,30%,${4 + h * 1.5}%)`; ctx.fillRect(px, py, cs, cs); }
+    if (g === Core.WALL) { ctx.fillStyle = ow === ME ? `hsl(${P.id.hue},25%,45%)` : "#555"; ctx.fillRect(px + 1, py + 1, cs - 2, cs - 2); }
+    else if (g === Core.NEST) {
+      ctx.strokeStyle = `hsl(${hueOf(ow)},90%,70%)`; ctx.lineWidth = Math.max(1.5, cs / 5);
+      ctx.beginPath(); ctx.arc(px + cs / 2, py + cs / 2, cs * 0.75, 0, 7); ctx.stroke();
+    }
+    else if (g === Core.DOT && !o) { ctx.fillStyle = ow ? `hsl(${hueOf(ow)},80%,78%)` : "#7be37b"; const s = Math.max(3, cs / 2.6); ctx.fillRect(px + cs / 2 - s / 2, py + cs / 2 - s / 2, s, s); }
+    else if (GL[g] !== undefined && GL[g]) { ctx.fillStyle = `hsl(${hueOf(ow || ME)},60%,80%)`; ctx.fillText(GL[g], px + cs / 2, py + cs / 2 + 1); }
+    if (o) {
+      const w = S.ws[o - 1];
+      ctx.fillStyle = `hsl(${hueOf(w.lin)},95%,${w.lin === ME ? 66 : 56}%)`;
+      ctx.beginPath(); ctx.arc(px + cs / 2, py + cs / 2, cs * 0.42, 0, 7); ctx.fill();
+    }
+  }
+}
+function hud(){
+  const p = P.prog, k = Core.counts(), m = mult(p.streak);
+  $("sub").textContent = `day ${p.days} · streak ${p.streak} · care ×${m.toFixed(1)} · ${k.wisps[ME] || 0} wisps · ${k.ground[ME] || 0} ground`;
+  $("fill").style.width = Math.min(100, p.todaySec / CAP * 100) + "%";
+  const left = Math.max(0, CAP - p.todaySec);
+  $("ml1").textContent = p.todaySec >= CAP ? "full for today — come back tomorrow" : attending() ? "feeding on your attention…" : "touch your world to tend it";
+  $("ml2").textContent = `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, "0")} left today`;
+}
+let toastT = 0;
+function toast(s){ const t = $("toast"); t.textContent = s; t.style.opacity = 1; clearTimeout(toastT); toastT = setTimeout(() => t.style.opacity = 0, 2600); }
+
+// ---------- touch ----------
+function cellAt(e){ const r = cv.getBoundingClientRect(); return [Math.floor((e.clientX - r.left) / cs), Math.floor((e.clientY - r.top) / cs)]; }
+let down = false, lastCell = "";
+function act(e, first){
+  lastTouch = Date.now();
+  const [x, y] = cellAt(e); if (x < 0 || y < 0 || x >= Core.W || y >= Core.H) return;
+  if (tool === "tend") {
+    if (P.prog.todaySec >= CAP) { if (first) toast("Your colony is full for today."); return; }
+    if (tendBudget >= 1 && Core.tendAt(x, y, ME)) tendBudget -= 1;
+    return;
+  }
+  const key = x + "," + y; if (!first && key === lastCell) return; lastCell = key;
+  const glyph = tool === "wall" ? Core.WALL : tool === "bud" ? 115 : tool === "erase" ? Core.SP : [62,118,60,94][arrowDir];
+  const r = Core.place(x, y, glyph, ME);
+  if (r === "foreign" && first) toast("That ground belongs to another lineage.");
+  if (r === "nest" && first) toast("Nests can't be changed.");
+}
+cv.addEventListener("pointerdown", e => { down = true; cv.setPointerCapture(e.pointerId); lastCell = ""; act(e, true); });
+cv.addEventListener("pointermove", e => { if (down) act(e, false); });
+cv.addEventListener("pointerup", () => down = false); cv.addEventListener("pointercancel", () => down = false);
+document.addEventListener("pointerdown", () => lastTouch = Date.now());
+
+for (const b of document.querySelectorAll("#tools [data-t]")) b.onclick = () => {
+  if (b.dataset.t === "arrow" && tool === "arrow") arrowDir = (arrowDir + 1) & 3;
+  tool = b.dataset.t;
+  for (const o of document.querySelectorAll("#tools [data-t]")) o.classList.toggle("on", o === b);
+  if (tool === "arrow") { b.textContent = ["→","↓","←","↑"][arrowDir] + " Path"; toast("Tap ground to lay a path. Tap the button again to turn it."); }
+  if (tool === "tend") toast("Drag across your ground: food grows where you care.");
+  if (tool === "bud") toast("Wisps that walk over ✱ split in two.");
+};
+$("bDay").onclick = () => {
+  const S = Core.state(); for (let t = 0; t < 900; t++) Core.tick(rivalAttention(S.tick));   // the night passes without you
+  rollDay(true); persist();
+};
+function rowSig(lin){ const c = document.createElement("canvas"); c.width = 5; c.height = 5;
+  if (lin === ME) drawSigil(c, P.id.seed2, P.id.hue); else { const v = RIVALS.find(r => r.lin === lin); drawSigil(c, v.seed, v.hue); } return c; }
+$("bRank").onclick = () => {
+  const k = Core.counts(), list = [...RIVALS.map(v => ({ lin:v.lin, name:nameFrom(v.seed), days:v.days })), { lin:ME, name:P.id.name, days:P.prog.streak }]
+    .map(v => ({ ...v, reach: (k.ground[v.lin] || 0) + 5 * (k.wisps[v.lin] || 0) })).sort((a, b) => b.reach - a.reach);
+  const el = $("rlist"); el.innerHTML = "";
+  list.forEach((v, i) => {
+    const row = document.createElement("div"); row.className = "row" + (v.lin === ME ? " me" : "");
+    row.appendChild(rowSig(v.lin));
+    const n = document.createElement("div"); n.className = "n"; n.innerHTML = `<b style="color:hsl(${hueOf(v.lin)},80%,65%)">${i + 1}. ${v.name}</b><div class="note">streak ${v.days}${v.lin === ME ? " · yours" : ""}</div>`;
+    const r = document.createElement("div"); r.className = "r"; r.textContent = v.reach;
+    row.append(n, r); el.appendChild(row);
+  });
+  $("ranks").style.display = "flex";
+};
+$("rClose").onclick = () => $("ranks").style.display = "none";
+$("rReset").onclick = () => { if (confirmReset()) { P = null; try { localStorage.removeItem(KEY); } catch(e){} location.reload(); } };
+let resetArmed = 0;
+function confirmReset(){ if (Date.now() - resetArmed < 3000) return true; resetArmed = Date.now(); $("rReset").textContent = "Tap again to erase"; return false; }
+
+// ---------- boot ----------
+(function boot(){
+  const saved = load();
+  if (!saved || !saved.world) return birth();
+  P = saved; Core.load(P.world);
+  const away = Math.min(6000, Math.floor((Date.now() - (P.savedAt || Date.now())) / 1000 * TPS));   // the world kept living
+  for (let t = 0; t < away; t++) Core.tick(rivalAttention(Core.state().tick));
+  start();
+  if (away > TPS * 30) toast(`You were away. The world kept going (${Math.round(away / TPS / 60)} min).`);
+})();
+</script>
+</body>
+</html>
