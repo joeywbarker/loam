@@ -1,0 +1,37 @@
+plugins { id 'com.android.application' }
+
+def keystore = System.getenv('LOAM_KEYSTORE')            // optional: set in CI to sign releases with a stable key
+
+android {
+    namespace 'app.loam'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'app.loam'
+        minSdk 24
+        targetSdk 34
+        versionCode (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
+        versionName System.getenv('LOAM_VERSION') ?: '0.1.0'
+    }
+    signingConfigs {
+        if (keystore) {
+            release {
+                storeFile file(keystore)
+                storePassword System.getenv('LOAM_KS_PASS')
+                keyAlias System.getenv('LOAM_KEY_ALIAS') ?: 'loam'
+                keyPassword System.getenv('LOAM_KS_PASS')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (keystore) signingConfig signingConfigs.release
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    // the app IS the web viewer: bundle app/web as the asset folder (single source of truth)
+    sourceSets { main { assets.srcDirs = ['../../web'] } }
+}

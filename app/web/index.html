@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Loam</title>
+<style>
+  :root { --bg:#05040a; --fg:#e8e4f4; --dim:#8a84a0; --acc:#f4b828; --line:#2a2540; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--fg); font:15px/1.4 ui-monospace,Menlo,Consolas,monospace; overflow:hidden; overscroll-behavior:none; }
+  #connect { position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center; gap:12px; padding:24px; max-width:480px; margin:auto; }
+  #connect h1 { margin:0; letter-spacing:.4em; font-weight:400; color:var(--acc); }
+  #connect p { margin:0; color:var(--dim); }
+  input.f { width:100%; padding:12px; background:#0d0b16; color:var(--fg); border:1px solid var(--line); border-radius:8px; font:inherit; }
+  button { font:inherit; color:var(--fg); background:#15122a; border:1px solid var(--line); border-radius:8px; padding:10px 12px; min-height:44px; }
+  button:active { background:#2a2450; }
+  button.go { background:var(--acc); color:#1a1200; border-color:var(--acc); font-weight:700; }
+  #err { color:#ff6b6b; min-height:1.4em; }
+  #main { position:absolute; inset:0; display:none; flex-direction:column; padding-top:env(safe-area-inset-top); }
+  #bar { display:flex; gap:10px; align-items:center; padding:6px 10px; font-size:12px; color:var(--dim); border-bottom:1px solid var(--line); white-space:nowrap; overflow:hidden; }
+  #dot { width:8px; height:8px; border-radius:50%; background:#555; flex:none; }
+  #dot.on { background:#55ff55; } #dot.bad { background:#ff5555; }
+  #stage { flex:1; position:relative; touch-action:none; min-height:0; }
+  canvas { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  #tools { display:flex; gap:6px; padding:8px 8px calc(8px + env(safe-area-inset-bottom)); border-top:1px solid var(--line); overflow-x:auto; }
+  #tools button { flex:none; }
+  #kb { position:absolute; left:-1000px; top:0; width:10px; opacity:0; }
+  #ink { display:inline-block; width:14px; height:14px; border-radius:3px; vertical-align:-2px; margin-left:4px; border:1px solid #fff4; }
+</style>
+</head>
+<body>
+<div id="connect">
+  <h1>L O A M</h1>
+  <p>a living world on your server. enter its address and key.</p>
+  <input class="f" id="url" placeholder="https://your-world.example.com" inputmode="url" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+  <input class="f" id="key" placeholder="key" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+  <button class="go" id="go">Connect</button>
+  <div id="err"></div>
+</div>
+
+<div id="main">
+  <div id="bar"><span id="dot"></span><span id="st">connecting…</span></div>
+  <div id="stage"><canvas id="c"></canvas></div>
+  <div id="tools">
+    <button id="bType">Type</button>
+    <button id="bLife">Life</button>
+    <button id="bInk">Ink<span id="ink"></span></button>
+    <button id="bDir">Face →</button>
+    <button id="bErase">Erase</button>
+    <button id="bOut">−</button>
+    <button id="bIn">+</button>
+    <button id="bHome">Find me</button>
+    <button id="bGear">⚙</button>
+  </div>
+  <input id="kb" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="text" aria-label="typing">
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const VGA = ["#000000","#0000aa","#00aa00","#00aaaa","#aa0000","#aa00aa","#aa5500","#aaaaaa","#555555","#5555ff","#55ff55","#55ffff","#ff5555","#ff55ff","#ffff55","#ffffff"];
+const EMBER = ["#000000","#140c38","#28146a","#64187a","#a02058","#d86820","#f4b828","#fcf4a8"];   // heat 0..7: cold -> white-hot
+const INKS = [15,12,9,14,13,11];
+const ARROW = ["→","↓","←","↑"], BODY = {0x10:"▶",0x1F:"▼",0x11:"◀",0x1E:"▲"};
+const HEAD = 20, POLL_MS = 200;
+
+let cfg = null, W = 256, H = 256;
+const ui = Object.assign({ zoom: 15, ink: 0, dir: 0, cx: 78, cy: 86, camx: 60, camy: 70 }, load("loam.ui"));
+function load(k){ try { return JSON.parse(localStorage.getItem(k)) || {}; } catch(e){ return {}; } }
+function save(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+const mod = (a,n) => ((a % n) + n) % n;
+
+// ---------- connect screen ----------
+function showConnect(msg){ $("main").style.display="none"; $("connect").style.display="flex"; $("err").textContent = msg||""; }
+function start(){ $("connect").style.display="none"; $("main").style.display="flex"; resize(); poll(); }
+(function init(){
+  cfg = load("loam.cfg");
+  if (!cfg.url && /^https?:$/.test(location.protocol)) cfg.url = location.origin;
+  $("url").value = cfg.url || ""; $("key").value = cfg.key || "";
+  if (cfg.url && cfg.key) start(); else showConnect();
+})();
+$("go").onclick = async () => {
+  let url = $("url").value.trim().replace(/\/+$/,""), key = $("key").value;
+  if (!/^https?:\/\//.test(url)) { $("err").textContent = "address must start with https://"; return; }
+  $("err").textContent = "checking…";
+  try {
+    const r = await fetch(url + "/api/stats", { headers: { "X-Loam-Key": key } });
+    if (r.status === 401) { $("err").textContent = "wrong key"; return; }
+    if (!r.ok) { $("err").textContent = "server answered " + r.status; return; }
+    cfg = { url, key }; save("loam.cfg", cfg); start();
+  } catch(e){ $("err").textContent = "can't reach that address"; }
+};
+$("bGear").onclick = () => { stopped = true; showConnect(""); };
+
+// ---------- network ----------
+let stopped = false, failing = 0, last = null, inflight = false;
+function api(path, opts){ opts = opts || {}; opts.headers = Object.assign({ "X-Loam-Key": cfg.key }, opts.headers || {}); return fetch(cfg.url + path, opts); }
+function act(d){ return api("/api/act", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(d) }).then(()=>refresh()).catch(()=>{}); }
+function geometry(){
+  const st = $("stage"), cw = ui.zoom, ch = Math.round(ui.zoom * 1.5);
+  const cols = Math.min(W, Math.ceil(st.clientWidth / cw) + 1), rows = Math.min(H, Math.ceil(st.clientHeight / ch) + 1);
+  return { cw, ch, cols, rows, x0: Math.floor(ui.camx), y0: Math.floor(ui.camy) };
+}
+async function refresh(){
+  if (inflight || stopped || !cfg) return;
+  inflight = true;
+  const g = geometry();
+  try {
+    const r = await api(`/api/view?x=${mod(g.x0,W)}&y=${mod(g.y0,H)}&w=${g.cols}&h=${g.rows}`);
+    if (r.status === 401) { stopped = true; showConnect("key was rejected"); return; }
+    if (!r.ok) throw new Error(r.status);
+    const buf = await r.arrayBuffer(), dv = new DataView(buf);
+    const w = dv.getUint16(12,true), h = dv.getUint16(14,true);
+    W = dv.getUint16(16,true); H = dv.getUint16(18,true);
+    last = { tick: dv.getUint32(0,true), wisps: dv.getUint32(4,true), energy: dv.getUint32(8,true), w, h, x0: g.x0, y0: g.y0,
+             cells: new Uint16Array(buf.slice(HEAD, HEAD + w*h*2)) };
+    failing = 0; $("dot").className = "on"; draw();
+  } catch(e){ failing++; $("dot").className = "bad"; $("st").textContent = "offline, retrying…"; }
+  finally { inflight = false; }
+}
+async function poll(){ stopped = false; (async function loop(){ if (stopped) return; await refresh(); setTimeout(loop, failing ? Math.min(5000, POLL_MS * 2 ** failing) : POLL_MS); })(); }
+
+// ---------- drawing ----------
+const cv = $("c"), ctx = cv.getContext("2d");
+function resize(){
+  const st = $("stage"), d = window.devicePixelRatio || 1;
+  cv.width = Math.max(1, Math.floor(st.clientWidth * d)); cv.height = Math.max(1, Math.floor(st.clientHeight * d));
+  ctx.setTransform(d,0,0,d,0,0); draw();
+}
+window.addEventListener("resize", resize);
+function draw(){
+  const st = $("stage"); ctx.fillStyle = "#000"; ctx.fillRect(0,0,st.clientWidth,st.clientHeight);
+  if (!last) return;
+  const cw = ui.zoom, ch = Math.round(ui.zoom * 1.5);
+  const ox = -(ui.camx - last.x0) * cw, oy = -(ui.camy - last.y0) * ch;
+  ctx.font = Math.round(ch * 0.78) + "px ui-monospace,Menlo,Consolas,monospace"; ctx.textBaseline = "middle"; ctx.textAlign = "center";
+  const { w, h, cells } = last;
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const c = cells[j*w + i], x = ox + i*cw, y = oy + j*ch, heat = (c >> 12) & 7;
+    if (heat) { ctx.fillStyle = EMBER[heat]; ctx.fillRect(x, y, cw + .5, ch + .5); }
+    const gl = c & 255; if (gl === 32 || gl === 0) continue;
+    ctx.fillStyle = VGA[(c >> 8) & 15];
+    ctx.fillText(BODY[gl] || (gl >= 32 && gl < 127 ? String.fromCharCode(gl) : "¤"), x + cw/2, y + ch/2 + 1);
+  }
+  // cursor
+  const cxv = mod(ui.cx - last.x0, W), cyv = mod(ui.cy - last.y0, H);
+  if (cxv < w && cyv < h) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.strokeRect(ox + cxv*cw + 1, oy + cyv*ch + 1, cw - 2, ch - 2); }
+  $("st").textContent = `t ${last.tick} · wisps ${last.wisps} · energy ${last.energy} · (${mod(ui.cx,W)},${mod(ui.cy,H)})`;
+}
+
+// ---------- input: pan, tap, pinch ----------
+const st = $("stage"), ptrs = new Map(); let moved = false, pinch0 = 0, zoom0 = 0;
+st.addEventListener("pointerdown", e => { st.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x:e.clientX, y:e.clientY, sx:e.clientX, sy:e.clientY }); moved = false;
+  if (ptrs.size === 2) { const [a,b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x-b.x, a.y-b.y); zoom0 = ui.zoom; } });
+st.addEventListener("pointermove", e => {
+  const p = ptrs.get(e.pointerId); if (!p) return;
+  if (ptrs.size === 2) {
+    p.x = e.clientX; p.y = e.clientY; const [a,b] = [...ptrs.values()];
+    setZoom(zoom0 * Math.hypot(a.x-b.x, a.y-b.y) / (pinch0 || 1)); moved = true; return;
+  }
+  const dx = e.clientX - p.x, dy = e.clientY - p.y;
+  if (!moved && Math.hypot(e.clientX - p.sx, e.clientY - p.sy) < 8) return;
+  moved = true; p.x = e.clientX; p.y = e.clientY;
+  ui.camx = mod(ui.camx - dx / ui.zoom, W); ui.camy = mod(ui.camy - dy / Math.round(ui.zoom*1.5), H); draw(); refresh();
+});
+function endPtr(e){
+  const p = ptrs.get(e.pointerId); ptrs.delete(e.pointerId);
+  if (p && !moved && ptrs.size === 0) {                      // a tap: put the cursor there
+    const r = st.getBoundingClientRect(), cw = ui.zoom, ch = Math.round(ui.zoom*1.5);
+    ui.cx = mod(Math.floor(ui.camx + (e.clientX - r.left) / cw), W); ui.cy = mod(Math.floor(ui.camy + (e.clientY - r.top) / ch), H); persist(); draw();
+  } else persist();
+}
+st.addEventListener("pointerup", endPtr); st.addEventListener("pointercancel", endPtr);
+function setZoom(z){
+  const old = ui.zoom, cx = st.clientWidth/2, cy = st.clientHeight/2;
+  const maxZ = Math.max(8, Math.sqrt(st.clientWidth * st.clientHeight / 24000 / 1.5) * 1.05);   // keep the window under the server's cell cap
+  const nz = Math.round(Math.min(40, Math.max(maxZ, 8, Math.min(z, 40))));
+  ui.camx += cx / old - cx / nz; ui.camy += cy / Math.round(old*1.5) - cy / Math.round(nz*1.5); ui.zoom = nz; persist(); draw(); refresh();
+}
+function persist(){ save("loam.ui", ui); }
+
+// ---------- toolbar ----------
+function advance(n){ const d = ui.dir; ui.cx = mod(ui.cx + [1,0,-1,0][d]*n, W); ui.cy = mod(ui.cy + [0,1,0,-1][d]*n, H); persist(); }
+function typeText(s){
+  s = [...s].filter(c => c >= " " && c <= "~").join(""); if (!s) return;
+  act({ op:"text", x:ui.cx, y:ui.cy, dir:ui.dir, ink:INKS[ui.ink], s }); advance(s.length);
+}
+function backspace(){ advance(-1); act({ op:"erase", x:ui.cx, y:ui.cy }); }
+const kb = $("kb"); function arm(){ kb.value = " "; kb.setSelectionRange(1,1); }
+$("bType").onclick = () => { arm(); kb.focus(); };
+kb.addEventListener("input", () => {
+  const v = kb.value;
+  if (v.length === 0) backspace(); else if (v.length > 1) typeText(v.slice(1));
+  arm();
+});
+kb.addEventListener("keydown", e => { if (e.key === "Backspace" && kb.value.length === 0) { e.preventDefault(); backspace(); arm(); } });
+$("bLife").onclick = () => act({ op:"breathe", x:ui.cx, y:ui.cy, dir:ui.dir, ink:INKS[ui.ink] });
+$("bErase").onclick = () => act({ op:"erase", x:ui.cx, y:ui.cy });
+function paintBtns(){ $("ink").style.background = VGA[INKS[ui.ink]]; $("bDir").textContent = "Face " + ARROW[ui.dir]; }
+$("bInk").onclick = () => { ui.ink = (ui.ink + 1) % INKS.length; paintBtns(); persist(); };
+$("bDir").onclick = () => { ui.dir = (ui.dir + 1) & 3; paintBtns(); persist(); };
+$("bIn").onclick = () => setZoom(ui.zoom + 3);
+$("bOut").onclick = () => setZoom(ui.zoom - 3);
+$("bHome").onclick = () => { ui.camx = mod(ui.cx - st.clientWidth / ui.zoom / 2, W); ui.camy = mod(ui.cy - st.clientHeight / Math.round(ui.zoom*1.5) / 2, H); persist(); draw(); refresh(); };
+paintBtns();
+</script>
+</body>
+</html>

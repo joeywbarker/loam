@@ -5,3 +5,11 @@ loam.img
 host_sim
 test_isa
 *.o
+*.so
+__pycache__/
+cloud/data/
+cloud/app/
+*.apk
+.gradle/
+build/
+local.properties

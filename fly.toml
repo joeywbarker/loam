@@ -1,0 +1,22 @@
+# Example for Fly.io.  Change `app`, then:  fly launch --no-deploy --copy-config ; fly volumes create loam_data --size 1
+#   fly secrets set LOAM_KEY="$(openssl rand -hex 24)"  ;  fly deploy
+app = "loam-world"
+primary_region = "ord"
+
+[build]
+  dockerfile = "cloud/Dockerfile"
+
+[mounts]
+  source = "loam_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "off"     # the world must never sleep
+  auto_start_machines = false
+  min_machines_running = 1
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

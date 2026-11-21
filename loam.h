@@ -17,9 +17,15 @@
 #define LOAM_H
 #include <stdint.h>
 
+#ifndef LW
 #define LW 80
+#endif
+#ifndef LH
 #define LH 24
+#endif
+#ifndef MAXW
 #define MAXW 128
+#endif
 
 #define MK(g, o, h) ((uint16_t)(((g) & 0xFF) | (((o) & 15) << 8) | (((h) & 7) << 12)))
 #define GLYPH(c) ((c) & 0xFF)
@@ -35,8 +41,12 @@
 #define FOOD      14             /* energy in one '.'                   */
 #define EMAX      300
 #define BUD_MIN   40             /* energy needed to bud (instruction s) */
+#ifndef DECAY_ROWS
 #define DECAY_ROWS 4             /* rows cooled per tick: trail lasts ~42 ticks */
+#endif
+#ifndef SUN
 #define SUN       1              /* random food drops per tick           */
+#endif
 #define SPOIL_MASK 31            /* old food rots 1-in-32 per visit      */
 
 typedef struct {
@@ -48,7 +58,7 @@ typedef struct {
 typedef struct {
     uint16_t *cells;             /* the screen */
     Wisp      w[MAXW];
-    uint8_t   occ[LW * LH];      /* wisp index + 1, derived from w[] */
+    uint16_t  occ[LW * LH];      /* wisp index + 1, derived from w[] */
     uint32_t  rng, tick;
     uint8_t   key_air, key_ttl;  /* last typed glyph hangs in the air briefly */
 } World;
@@ -188,7 +198,7 @@ static void wisp_step(World *g, Wisp *w, int idx) {
 
 static void sweep(World *g) {        /* time passes: trails cool, cooled ground sprouts */
     for (int r = 0; r < DECAY_ROWS; r++) {
-        int y = (g->tick * DECAY_ROWS + r) % LH;
+        int y = (int)(((uint64_t)g->tick * DECAY_ROWS + r) % LH);
         for (int x = 0; x < LW; x++) {
             int i = IDX(x, y);
             if (g->occ[i]) continue;

@@ -1,0 +1,39 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  os:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y nasm
+      - name: Build the bootable image
+        run: make
+      - name: Instruction-set tests and 100k-tick ecology run
+        run: make test
+
+  cloud:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build native core
+        run: gcc -O2 -Wall -fPIC -fvisibility=hidden -shared -o cloud/libloam.so cloud/libloam.c
+      - name: Server tests
+        run: python3 cloud/test_cloud.py
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -f cloud/Dockerfile -t loam .
+      - name: Smoke test (refuses to start without a key; serves with one)
+        run: |
+          ! docker run --rm loam 2>/dev/null
+          docker run -d --name loam -p 8080:8080 -e LOAM_KEY=ci-smoke-key-123456 loam
+          for i in $(seq 1 30); do curl -sf localhost:8080/healthz && break; sleep 1; done
+          test "$(curl -s -o /dev/null -w '%{http_code}' localhost:8080/api/stats)" = 401
+          curl -sf -H 'X-Loam-Key: ci-smoke-key-123456' localhost:8080/api/stats

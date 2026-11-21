@@ -77,6 +77,17 @@ To start fresh: F5, or recreate the image with `make clean all`.
     kernel.c    hardware glue: VGA as heap + palette, PS/2 keyboard, PIT clock, speaker, ATA snapshot
     test_isa.c  unit tests for the instruction set;  host_sim.c  headless ecology runner
 
+## The cloud world and the phone app
+
+The same physics (`loam.h`) also runs as an always-on server on a 256x256 world, with a phone viewer:
+
+    cloud/       libloam.c (native core), server.py (HTTP API, atomic snapshots, daily backups), Dockerfile, tests
+    app/web/     the viewer: one HTML file (pan, pinch-zoom, type, breathe life); also served by the server itself
+    app/android/ a WebView shell; GitHub Actions builds the APK and attaches it to every Release
+    DEPLOY.md    how to host it (needs a persistent disk and a secret key)
+
+The world never lives on the phone, only a ~4 KB window of it. The world never stops; individual wisps still starve.
+
 ## Honest limits
 
 Proof of concept.  Tested on QEMU only (not real hardware).  BIOS boot, polling loops (no
