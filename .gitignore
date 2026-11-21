@@ -1,0 +1,7 @@
+kernel.elf
+kernel.bin
+boot.bin
+loam.img
+host_sim
+test_isa
+*.o
